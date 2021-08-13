@@ -12,6 +12,9 @@ repeats = 5
 word = ""
 score = 0
 
+#wordnet has startup costs for the first call, so calling it here with an empty string gets that out of the way before the game starts
+wordnet.synsets("")
+
 
 #The weights of letters in the English language, sourced from below:
 #http://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
@@ -24,7 +27,8 @@ scores = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 
 #An empty list to be filled with buttons.
 grid = []
 
-
+#to provide access to a method without parameters for use as a key, every button has a Handler instance created for it, who's handle_input method can then be
+#passed as a key
 class Handler:
     def __init__(self, x, y, letter):
         self.x = x 
@@ -34,6 +38,7 @@ class Handler:
     def handle_input(self):
         handle_input(self.x, self.y, self.letter)
 
+#creates a 5x5 grid of letters-a grouping of 5 lists that are each 5-long
 def create_grid():
     for int in range(1, repeats + 1):
         row = make_row()
@@ -43,12 +48,13 @@ def create_grid():
 def make_row():
     list = []
     for int in range(1, repeats + 1):
+        #pick a single item out of alphabet_dict, weighted according to the values in weights
         item = choice(alphabet_dict, 1, weights)[0]
         list.append(item)
     return list
 
 
-
+#convert every letter in a grid into a SimpleGUI button
 def grid_to_buttons():
     for int1 in range(0, len(grid)):
         list = grid[int1]
@@ -60,7 +66,7 @@ def grid_to_buttons():
 
 
 
-
+#generates all valid coordinates for adjacent buttons. if conditonals are to prevent index out of bounds exceptions
 def make_coords(x, y):
     coords = []
     if (x > 0):
@@ -82,14 +88,17 @@ def make_coords(x, y):
     return coords
 
     
+#Handle the input from a button. Appends the letter onto the existing word, and disables all except the adjacent buttons.
 def handle_input(x, y, letter): 
     global word 
+    #Removes digits appended to duplicate letters
     cleaned_letter = "".join([i for i in letter if not i.isdigit()])
     word += cleaned_letter
 
-    print(word)
-
+    #generate coordinates of adjacent buttons
     coords = make_coords(x, y)
+
+    #disable buttons, reenabling adjacent buttons. probably a better way to do this-"if button.get_coords not in coords, then disable"? 
     for list in grid:
         for button in list:
            button.update(disabled=True)
@@ -101,7 +110,8 @@ def handle_input(x, y, letter):
         button.update(disabled=False)
 
 
-
+#creates a handler for each button w/ that button's coordinates and letter. each handler has it's own unique handle method which can be passed
+#as the button's key without any parameters
 def add_keys():
     for int1 in range(0, len(grid)):
         list = grid[int1]
@@ -109,8 +119,8 @@ def add_keys():
             button=list[int2]
             handler = Handler(int2, int1, button.Key)
             button.Key=(handler.handle_input)
-            print(str(int1) + str(int2))
-          
+
+#reactivates all buttons. used after the user clears or submits their word.      
 def enable_all():
     for int1 in range(0, len(grid)):
         list = grid[int1]
@@ -118,6 +128,7 @@ def enable_all():
             button=list[int2]
             button.update(disabled=False)
 
+#adds up the word's scrabble score to the score variable and updates the display
 def update_score():
     global word
     global score
@@ -126,7 +137,7 @@ def update_score():
         score += to_add
     score_field.update(value=score)
 
-
+#checks if the user inputted a real word and handles it accordingly. then resets the word and updates the field's display
 def check_word():
     global word
     global word_field
@@ -141,28 +152,31 @@ def check_word():
     word_field.update(value=word)
 
 
-
+#make grid and covert it to buttons
 create_grid()
 grid_to_buttons()
 
+#declare fields as variables so they can have their value changed later
 word_field = sg.Text(word, size=(25, 1), background_color="#FFFFFF", text_color="#0352fc")
 info_field = sg.Text("Input a word.")
 score_field = sg.Text(str(score))
 
+#create layout and window
 layout = [[score_field], [info_field], [word_field], grid, [sg.Button('Clear'), sg.Button('Submit')]]
 window = sg.Window(title="Wordify", layout=layout, margins=(100, 50), finalize=True)
-
-
+ 
+#add handle_input method keys to each button 
 add_keys()
-wordnet.synsets("egg")
 
 
 
+#event loop
 while True:
     event, values= window.read()
     
     if event == sg.WIN_CLOSED:
         break
+    #the only callable events are the handle_input keys assigned to the buttons, so we know this is a user letter input
     if callable(event):
         event()
         print(word)
